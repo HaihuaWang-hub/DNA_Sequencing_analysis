@@ -1,3 +1,4 @@
+From wanghaihua-hub DNA analysis
 *** common primers we used
 341F: CCTACGGGAGGCAGCAG	
 515F: GTGCCAGCMGCCGCGGTAA
