@@ -8,12 +8,10 @@ ITS4: TCCTCCGCTTATTGATATGC
 
 ####The current use to cut the primers for individual files (modify the primer sequences according your primers applied)
 
-for file in `find . -name "*R1*fastq.gz"`;         do         fastaFile=${file}; cutadapt -g CTTGGTCATTTAGAGGAAGTAA -o ${fastaFile}_trimmed.fastq.gz ${fastaFile}; done
+for file in `find . -name "*R1*fastq.gz"`;         do         fastaFile=${file}; cutadapt -g CCTACGGGAGGCAGCAG -o ${fastaFile}_trimmed.fastq.gz ${fastaFile}; done
 
 for file in `find . -name "*R2*fastq.gz"`;         do         fastaFile=${file}; cutadapt -g GGACTACNVGGGTWTCTAAT -o ${fastaFile}_trimmed.fastq.gz ${fastaFile}; done
 
-
-for f in .; do mv "$f" "${f/.gz_trimmed.fastq/}"; done
 
 
 ####Qiime2
