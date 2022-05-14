@@ -23,26 +23,26 @@ source tab-qiime
 #####input your data into qiime2 (single-end or paired-end)
 ### data input for single end
 
-qiime tools import \
---type 'SampleData[SequencesWithQuality]' \
---input-path trimmed_seq \
---input-format CasavaOneEightSingleLanePerSampleDirFmt \
---output-path demux-single-end.qza
+# qiime tools import \
+# --type 'SampleData[SequencesWithQuality]' \
+# --input-path trimmed_seq \
+# --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+# --output-path demux-single-end.qza
 
 
 ### data input for paired-end
-qiime tools import \
-  --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path trimmed_seq \
-  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
-  --output-path demux-paired-end.qza
+# qiime tools import \
+#   --type 'SampleData[PairedEndSequencesWithQuality]' \
+#   --input-path trimmed_seq \
+#   --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+#   --output-path demux-paired-end.qza
   
   
-qiime tools import \
-  --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path trimmed_seq/manifest.txt \
-  --input-format PairedEndFastqManifestPhred33V2 \
-  --output-path demux-paired-end.qza
+# qiime tools import \
+#   --type 'SampleData[PairedEndSequencesWithQuality]' \
+#   --input-path trimmed_seq/manifest.txt \
+#   --input-format PairedEndFastqManifestPhred33V2 \
+#   --output-path demux-paired-end.qza
   
 qiime tools import  \
    --type 'SampleData[SequencesWithQuality]' \
@@ -52,7 +52,7 @@ qiime tools import  \
 
 ####check QC 
 qiime demux summarize \
---i-data demux-single-end.qza \
+--i-data single-end-demux.qza \
 --o-visualization summarized-demux.qzv
 
 qiime tools view summarized-demux.qzv
@@ -62,7 +62,7 @@ qiime tools view summarized-demux.qzv
 #the number of "--p-trunc-len" defines the minimum sequence length 
 
 qiime dada2 denoise-single \
---i-demultiplexed-seqs demux-single-end.qza \
+--i-demultiplexed-seqs single-end-demux.qza \
 --p-trunc-len 240 \ ####set this len threshold based on the QC 
 --p-n-threads 0 \
 --o-denoising-stats stats1.qza \
@@ -70,14 +70,14 @@ qiime dada2 denoise-single \
 --o-representative-sequences rep1
 
 ###for paired-end 
-(qiime dada2 denoise-paired \
- --i-demultiplexed-seqs demux-single-end.qza \
---p-trunc-len-f 240 \ ####set this len threshold based on the QC 
---p-trunc-len-r 240
---p-n-threads 0 \
---o-denoising-stats stats1.qza \
---o-table table1 \
---o-representative-sequences rep1)
+# (qiime dada2 denoise-paired \
+#  --i-demultiplexed-seqs demux-single-end.qza \
+# --p-trunc-len-f 240 \ ####set this len threshold based on the QC 
+# --p-trunc-len-r 240
+# --p-n-threads 0 \
+# --o-denoising-stats stats1.qza \
+# --o-table table1 \
+# --o-representative-sequences rep1)
 
 
 
@@ -89,7 +89,7 @@ qiime metadata tabulate \
 qiime feature-table summarize \
 --i-table table1.qza \
 --o-visualization table1.qzv \
---m-sample-metadata-file sample-metadata.txt 
+--m-sample-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt  
 
 
 qiime tools view table1.qzv
@@ -106,14 +106,14 @@ qiime tools view rep1.qzv
 qiime vsearch cluster-features-de-novo \
 --i-sequences rep1.qza \
 --i-table table1.qza \
---p-perc-identity 0.99 \ ####(0.97 and 0.99 for OTU; 1 for ASV)
---o-clustered-table 99_OTU_table.qza \
---o-clustered-sequences 99_OTU_seq.qza
+--p-perc-identity 1 \ #(0.97 and 0.99 for OTU; 1 for ASV)
+--o-clustered-table 99_ASV_table.qza \
+--o-clustered-sequences 99_ASV_seq.qza
 
 
 qiime feature-table summarize \
---i-table 99_OTU_table.qza \
---m-sample-metadata-file sample-metadata.txt \
+--i-table 99_ASV_table.qza \
+--m-sample-metadata-file  trimmed_seq/GNV_Root_Metadata.txt   \
 --o-visualization 99_vsearch_visual.qzv
 
 qiime tools view 99_vsearch_visual.qzv
@@ -121,38 +121,39 @@ qiime tools view 99_vsearch_visual.qzv
 
 
 qiime feature-table tabulate-seqs \
-  --i-data 99_OTU_seq.qza \
-  --o-visualization 99_OTU_seq.qzv
+  --i-data 99_ASV_table.qza \
+  --o-visualization 99_ASV_table.qzv
 
 
-qiime tools view 99_OTU_seq.qzv
+qiime tools view 99_ASV_table.qzv
 
 
 
 
 ###import the .fasta file (the reference sequences)(Website:https://docs.qiime2.org/2018.6/data-resources/)
+#ftp://greengenes.microbio.me/greengenes_release/gg_13_5/gg_13_8_otus
 ####choose appropriate references for your study
 
 ##99% threshold
 qiime tools import \
   --type 'FeatureData[Sequence]' \
   --input-path 99_otus.fasta \
-  --output-path 99_otus_ref.qza
+  --output-path ../../99_otus_ref.qza
   
 qiime tools import \
   --type 'FeatureData[Taxonomy]' \
   --input-format HeaderlessTSVTaxonomyFormat \
-  --input-path 99_taxonomy.txt \
-  --output-path 99_ref-taxonomy.qza
+  --input-path 99_otu_taxonomy.txt \
+  --output-path ../../99_ref-taxonomy.qza
   
 #70% Taxonomic assignment using Blast+
 
 qiime feature-classifier classify-consensus-blast \
---i-query 99_OTU_seq.qza \
---i-reference-reads 99_otus_ref.qza \
---i-reference-taxonomy 99_ref-taxonomy.qza \
+--i-query 99_ASV_seq.qza \
+--i-reference-reads ../database_greengene/99_otus_ref.qza \
+--i-reference-taxonomy ../database_greengene/99_ref-taxonomy.qza \
 --p-maxaccepts 10 \
---p-perc-identity 0.70 \ ###adjust identity threshold based on your study
+--p-perc-identity 0.97 \ ###adjust identity threshold based on your study
 --p-min-consensus 0.51 \
 --o-classification 99_taxonomy_blast.qza
 
@@ -169,7 +170,7 @@ qiime tools view 99_taxonomy_blast.qzv
 qiime taxa barplot \
   --i-table 99_OTU_table.qza \
   --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt \
   --o-visualization 99_barplot_blast.qzv
 
 qiime tools view 99_barplot_blast.qzv
@@ -185,7 +186,7 @@ qiime tools view 99_barplot_blast.qzv
 qiime taxa barplot \
   --i-table 99_table_no_Unassigned.qza \
   --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt \
   --o-visualization 99_barplot_blast_filtered.qzv
 
 
@@ -194,28 +195,50 @@ qiime taxa barplot \
 ##To obtain relative frequency table at different taxonomic levels by adjust level number 
 (1-7 correspond to kingdom to species)##
 
+for i in $(seq 1 7); do
+qiime taxa collapse \
+   --i-table 99_ASV_table.qza \
+   --i-taxonomy 99_taxonomy_blast.qza \
+   --p-level $i \
+   --o-collapsed-table collapsed-tablelevel${i}.qza
 
-qiime taxa collapse --i-table 99_OTU_table.qza --i-taxonomy 99_taxonomy_blast.qza --p-level 6 --o-collapsed-table collapsed-tablelevel6.qza
+qiime feature-table relative-frequency \
+   --i-table collapsed-tablelevel${i}.qza \
+   --o-relative-frequency-table collapsed-tablelevel${i}relativefrequency.qza
 
-qiime feature-table relative-frequency --i-table collapsed-tablelevel6.qza --o-relative-frequency-table collapsed-tablelevel6relativefrequency.qza
+qiime tools export \
+   --input-path collapsed-tablelevel${i}relativefrequency.qza \
+   --output-path collapsed-tablelevel${i}relativefrequency
 
-qiime tools export --input-path collapsed-tablelevel6relativefrequency.qza --output-path collapsed-tablelevel6relativefrequency
-biom convert -i collapsed-tablelevel6relativefrequency/feature-table.biom -o table_level6.tsv --to-tsv
-
+biom convert \
+   -i collapsed-tablelevel${i}relativefrequency/feature-table.biom \
+   -o table_level${i}.tsv --to-tsv
 
 ##To obtain relative frequency table at different taxonomic levels after filtering##
 
-qiime taxa collapse --i-table 99_table_no_Unassigned.qza --i-taxonomy 99_taxonomy_blast.qza --p-level 6 --o-collapsed-table collapsed-tablelevel6.qza
+qiime taxa collapse \
+   --i-table 99_table_no_Unassigned.qza \
+   --i-taxonomy 99_taxonomy_blast.qza  \
+   --p-level $i \
+   --o-collapsed-table collapsed-tablelevel${i}.qza
 
-qiime feature-table relative-frequency --i-table collapsed-tablelevel6.qza --o-relative-frequency-table collapsed-tablelevel6relativefrequency.qza
+qiime feature-table relative-frequency \
+   --i-table collapsed-tablelevel${i}.qza \
+   --o-relative-frequency-table collapsed-tablelevel${i}relativefrequency.qza
 
-qiime tools export --input-path collapsed-tablelevel6relativefrequency.qza --output-path collapsed-tablelevel6relativefrequency
-biom convert -i collapsed-tablelevel6relativefrequency/feature-table.biom -o table_level6_filter.tsv --to-tsv
+qiime tools export \
+   --input-path collapsed-tablelevel${i}relativefrequency.qza \
+   --output-path collapsed-tablelevel${i}relativefrequency
 
+biom convert \
+   -i collapsed-tablelevel${i}relativefrequency/feature-table.biom \
+   -o table_level${i}_filter.tsv --to-tsv
+
+done
 
 ### OTU table for R run
  
-qiime tools export --input-path 99_OTU_table.qza --output-path otu_table
+qiime tools export --input-path 99_ASV_table.qza --output-path otu_table
 biom convert -i otu_table/feature-table.biom -o otu_table.tsv --to-tsv
 
 
