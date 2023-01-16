@@ -1,0 +1,17 @@
+From wanghaihua-hub DNA analysis
+*** common primers we used
+341F: CCTACGGGAGGCAGCAG	
+515F: GTGCCAGCMGCCGCGGTAA
+806R: GGACTACNVGGGTWTCTAAT
+
+ITS1: CTTGGTCATTTAGAGGAAGTAA
+ITS4: TCCTCCGCTTATTGATATGC
+
+nu-SSU0817: TTAGCATGGAATAATRRAATAGGA
+nu-SSU1196: TCTGGACCTGGTGAGTTTCC
+####The current use to cut the primers for individual files (modify the primer sequences according your primers applied)
+
+for file in `find . -name "*R1*fq"`;         do         fastaFile=${file}; cutadapt -g TTAGCATGGAATAATRRAATAGGA -o ${fastaFile}_trimmed.fastq ${fastaFile}; done
+
+for file in `find . -name "*R2*fq"`;         do         fastaFile=${file}; cutadapt -g TCTGGACCTGGTGAGTTTCC -o ${fastaFile}_trimmed.fastq ${fastaFile}; done
+
