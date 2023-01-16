@@ -15,3 +15,299 @@ for file in `find . -name "*R1*fq"`;         do         fastaFile=${file}; cutad
 
 for file in `find . -name "*R2*fq"`;         do         fastaFile=${file}; cutadapt -g TCTGGACCTGGTGAGTTTCC -o ${fastaFile}_trimmed.fastq ${fastaFile}; done
 
+####Qiime2
+
+##Get into Qiime:
+source activate qiime2-2020.2
+source tab-qiime
+
+#####input your data into qiime2 (single-end or paired-end)
+### data input for single end
+
+# qiime tools import \
+# --type 'SampleData[SequencesWithQuality]' \
+# --input-path trimmed_seq \
+# --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+# --output-path demux-single-end.qza
+
+
+### data input for paired-end
+# qiime tools import \
+#   --type 'SampleData[PairedEndSequencesWithQuality]' \
+#   --input-path trimmed_seq \
+#   --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+#   --output-path demux-paired-end.qza
+  
+  
+# qiime tools import \
+   --type 'SampleData[PairedEndSequencesWithQuality]' \
+   --input-path trim_data/manifest.txt \
+   --input-format PairedEndFastqManifestPhred33V2 \
+   --output-path demux-paired-end.qza
+  
+qiime tools import  \
+   --type 'SampleData[SequencesWithQuality]' \
+   --input-path trim_data/manifest_single.txt \
+   --output-path single-end-demux.qza   \
+   --input-format SingleEndFastqManifestPhred33V2
+
+####check QC 
+qiime demux summarize \
+--i-data demux-paired-end.qza \
+--o-visualization summarized-demux.qzv
+
+qiime tools view summarized-demux.qzv
+
+
+
+
+####dada2 denoise single end 
+#the number of "--p-trunc-len" defines the minimum sequence length 
+
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs single-end-demux.qza \
+--p-trunc-len 240 \
+--p-n-threads 0 \
+--o-denoising-stats stats1.qza \
+--o-table table1 \
+--o-representative-sequences rep1
+
+###for paired-end 
+ qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end.qza \
+ --p-trunc-len-f 240 \ ####set this len threshold based on the QC 
+ --p-trunc-len-r 150 \
+ --p-n-threads 0 \
+ --o-denoising-stats stats1.qza \
+ --o-table table1 \
+ --o-representative-sequences rep1
+
+
+
+
+qiime metadata tabulate \
+  --m-input-file stats1.qza \
+  --o-visualization stats1.qzv
+
+
+qiime feature-table summarize \
+--i-table table1.qza \
+--o-visualization table1.qzv \
+--m-sample-metadata-file Altitude_Metadata.txt  
+
+
+
+ qiime feature-table tabulate-seqs \
+  --i-data rep1.qza \
+  --o-visualization rep1.qzv
+
+
+
+
+qiime vsearch cluster-features-de-novo \
+--i-sequences rep1.qza \
+--i-table table1.qza \
+--p-perc-identity 1 \ #(0.97 and 0.99 for OTU; 1 for ASV)
+--o-clustered-table 99_ASV_table.qza \
+--o-clustered-sequences 99_ASV_seq.qza
+
+
+qiime feature-table summarize \
+--i-table 99_ASV_table.qza \
+--m-sample-metadata-file  Altitude_Metadata.txt   \
+--o-visualization 99_vsearch_visual.qzv
+
+qiime tools view 99_vsearch_visual.qzv
+
+
+
+qiime feature-table tabulate-seqs \
+  --i-data 99_ASV_table.qza \
+  --o-visualization 99_ASV_table.qzv
+
+
+qiime tools view 99_ASV_table.qzv
+
+
+
+
+###import the .fasta file (the reference sequences)(Website:https://docs.qiime2.org/2018.6/data-resources/)
+#ftp://greengenes.microbio.me/greengenes_release/gg_13_5/gg_13_8_otus
+####choose appropriate references for your study
+
+##99% threshold
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path SILVA_138.1_SSURef_NR99_tax_silva.fasta \
+  --output-path 99_otus_ref.qza
+  
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --input-format HeaderlessTSVTaxonomyFormat \
+  --input-path tax_slv_ssu_138.1.acc_taxid \
+  --output-path 99_ref-taxonomy.qza
+  
+  
+  
+  
+  
+  
+qiime feature-classifier classify-consensus-blast \
+--i-query 99_ASV_seq.qza \
+--i-reference-reads ref/silva-138-99-seqs.qza \
+--i-reference-taxonomy ref/silva-138-99-tax.qza \
+--p-maxaccepts 10 \
+--p-perc-identity 0.97 \ ###adjust identity threshold based on your study
+--p-min-consensus 0.51 \
+--o-classification 99_taxonomy_blast_classify.qza \
+--o-search-results 99_taxonomy_blast_search.qza
+
+#visualization of the taxonomic assignment
+
+qiime metadata tabulate \
+  --m-input-file 99_taxonomy_blast_classify.qza \
+  --o-visualization 99_taxonomy_blast.qzv
+
+#Barplot
+
+qiime taxa barplot \
+  --i-table 99_ASV_table.qza \
+  --i-taxonomy 99_taxonomy_blast_classify.qza \
+  --m-metadata-file Altitude_Metadata.txt  \
+  --o-visualization 99_barplot_blast.qzv
+
+qiime tools view 99_barplot_blast.qzv
+
+##filter unidentified taxa
+ qiime taxa filter-table \
+  --i-table 99_ASV_table.qza \
+  --i-taxonomy 99_taxonomy_blast_classify.qza \
+  --p-exclude Unassigned,Protista,Viridiplantae,k__unidentified \
+  --p-mode contains \
+  --o-filtered-table 99_table_no_Unassigned.qza
+
+qiime taxa barplot \
+  --i-table 99_table_no_Unassigned.qza \
+  --i-taxonomy 99_taxonomy_blast_classify.qza \
+  --m-metadata-file Altitude_Metadata.txt \
+  --o-visualization 99_barplot_blast_filtered.qzv
+
+
+
+
+###Obtaining the OTU table###
+
+##To obtain relative frequency table at different taxonomic levels by adjust level number 
+(1-7 correspond to kingdom to species)##
+
+for i in $(seq 1 7); do
+qiime taxa collapse \
+   --i-table 99_ASV_table.qza \
+   --i-taxonomy 99_taxonomy_blast_classify.qza \
+   --p-level $i \
+   --o-collapsed-table collapsed-tablelevel${i}.qza
+
+qiime feature-table relative-frequency \
+   --i-table collapsed-tablelevel${i}.qza \
+   --o-relative-frequency-table collapsed-tablelevel${i}relativefrequency.qza
+
+qiime tools export \
+   --input-path collapsed-tablelevel${i}relativefrequency.qza \
+   --output-path collapsed-tablelevel${i}relativefrequency
+
+biom convert \
+   -i collapsed-tablelevel${i}relativefrequency/feature-table.biom \
+   -o table_level${i}.tsv --to-tsv
+
+##To obtain relative frequency table at different taxonomic levels after filtering##
+##To obtain relative frequency table at different taxonomic levels after filtering##
+
+qiime taxa collapse \
+   --i-table 99_table_no_Unassigned.qza \
+   --i-taxonomy 99_taxonomy_blast_classify.qza  \
+   --p-level $i \
+   --o-collapsed-table collapsed-tablelevel${i}.qza
+
+qiime feature-table relative-frequency \
+   --i-table collapsed-tablelevel${i}.qza \
+   --o-relative-frequency-table collapsed-tablelevel${i}relativefrequency.qza
+
+qiime tools export \
+   --input-path collapsed-tablelevel${i}relativefrequency.qza \
+   --output-path collapsed-tablelevel${i}relativefrequency
+
+biom convert \
+   -i collapsed-tablelevel${i}relativefrequency/feature-table.biom \
+   -o table_level${i}_filter.tsv --to-tsv
+
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file Altitude_Metadata.txt \
+  --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+  
+qiime tools view core-metrics-results/faith-pd-group-significance.qzv
+
+
+
+###evenness
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/evenness_vector.qza \
+  --m-metadata-file Altitude_Metadata.txt \
+  --o-visualization core-metrics-results/evenness-group-significance.qzv
+  
+qiime tools view core-metrics-results/evenness-group-significance.qzv 
+
+
+###shannon index
+ qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/shannon_vector.qza \
+  --m-metadata-file Altitude_Metadata.txt \
+  --o-visualization core-metrics-results/shannon-group-significance.qzv
+  
+  qiime tools view core-metrics-results/shannon-group-significance.qzv
+  
+## alpha rarefaction
+qiime diversity alpha-rarefaction \
+  --i-table table1.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 20000 \
+  --m-metadata-file Altitude_Metadata.txt \
+  --o-visualization alpha-rarefaction.qzv
+  
+  qiime tools view alpha-rarefaction.qzv
+
