@@ -25,6 +25,10 @@ for file in `find . -name "*.2.fq"`; do
     cutadapt -g GCTGCGTTCTTCATCGATGC -o ${fastaFile}_R2_trimmed.fastq ${file}
 done
 
+for file in ls *.fq; do
+  fileName=$(echo $file|cut -d"." -f 3)
+  seqtk seq -L 180 $file > $fileName.filtered.fq
+done
 
 ####Qiime2
 
@@ -77,7 +81,8 @@ qiime tools view summarized-demux.qzv
 
 qiime dada2 denoise-single \
 --i-demultiplexed-seqs single-end-demux.qza \
---p-trunc-len 240 \
+--p-trunc-len 0 \
+--p-trunc-q 5 \
 --p-n-threads 0 \
 --o-denoising-stats stats1.qza \
 --o-table table1 \
@@ -86,8 +91,8 @@ qiime dada2 denoise-single \
 ###for paired-end 
  qiime dada2 denoise-paired \
   --i-demultiplexed-seqs demux-paired-end.qza \
- --p-trunc-len-f 240 \ ####set this len threshold based on the QC 
- --p-trunc-len-r 150 \
+ --p-trunc-len-f 215 \
+ --p-trunc-len-r 220 \
  --p-n-threads 0 \
  --o-denoising-stats stats1.qza \
  --o-table table1 \
@@ -104,7 +109,7 @@ qiime metadata tabulate \
 qiime feature-table summarize \
 --i-table table1.qza \
 --o-visualization table1.qzv \
---m-sample-metadata-file Altitude_Metadata.txt  
+--m-sample-metadata-file Konjac_soil_metadata.txt  
 
 
 
@@ -118,23 +123,23 @@ qiime feature-table summarize \
 qiime vsearch cluster-features-de-novo \
 --i-sequences rep1.qza \
 --i-table table1.qza \
---p-perc-identity 1 \ #(0.97 and 0.99 for OTU; 1 for ASV)
---o-clustered-table 99_ASV_table.qza \
---o-clustered-sequences 99_ASV_seq.qza
+--p-perc-identity 0.97 \ #(0.97 and 0.99 for OTU; 1 for ASV)
+--o-clustered-table 97_OTU_table.qza \
+--o-clustered-sequences 97_OTU_seq.qza
 
 
 qiime feature-table summarize \
---i-table 99_ASV_table.qza \
---m-sample-metadata-file  Altitude_Metadata.txt   \
---o-visualization 99_vsearch_visual.qzv
+--i-table 97_OTU_table.qza \
+--m-sample-metadata-file  Konjac_soil_metadata.txt   \
+--o-visualization 97_vsearch_visual.qzv
 
 qiime tools view 99_vsearch_visual.qzv
 
 
 
 qiime feature-table tabulate-seqs \
-  --i-data 99_ASV_table.qza \
-  --o-visualization 99_ASV_table.qzv
+  --i-data 97_OTU_seq.qza \
+  --o-visualization 97_OTU_seq.qzv
 
 
 qiime tools view 99_ASV_table.qzv
