@@ -263,6 +263,11 @@ qiime phylogeny fasttree \
 qiime phylogeny midpoint-root \
   --i-tree unrooted-tree.qza \
   --o-rooted-tree rooted-tree.qza
+
+  qiime tools export \
+  --input-path unrooted-tree.qza \
+  --output-path exported-tree
+
   
 qiime diversity core-metrics-phylogenetic \
   --i-phylogeny rooted-tree.qza \
