@@ -39,21 +39,21 @@ source tab-qiime
 #   --output-path demux-paired-end.qza
   
   
-# qiime tools import \
-#   --type 'SampleData[PairedEndSequencesWithQuality]' \
-#   --input-path trimmed_seq/manifest.txt \
-#   --input-format PairedEndFastqManifestPhred33V2 \
-#   --output-path demux-paired-end.qza
+ qiime tools import \
+   --type 'SampleData[PairedEndSequencesWithQuality]' \
+   --input-path cleandata/manifest.txt \
+   --input-format PairedEndFastqManifestPhred33V2 \
+   --output-path demux-paired-end.qza
   
 qiime tools import  \
    --type 'SampleData[SequencesWithQuality]' \
-   --input-path trimmed_seq/manifest.txt \
+   --input-path cleandata/manifest.txt \
    --output-path single-end-demux.qza   \
    --input-format SingleEndFastqManifestPhred33V2
 
 ####check QC 
 qiime demux summarize \
---i-data single-end-demux.qza \
+--i-data demux-paired-end.qza \
 --o-visualization summarized-demux.qzv
 
 qiime tools view summarized-demux.qzv
