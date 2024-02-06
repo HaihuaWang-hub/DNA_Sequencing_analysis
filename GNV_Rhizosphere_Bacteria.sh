@@ -70,15 +70,15 @@ qiime dada2 denoise-single \
 --o-table table1 \
 --o-representative-sequences rep1
 
-###for paired-end 
-# (qiime dada2 denoise-paired \
-#  --i-demultiplexed-seqs demux-single-end.qza \
-# --p-trunc-len-f 240 \ ####set this len threshold based on the QC 
-# --p-trunc-len-r 240
-# --p-n-threads 0 \
-# --o-denoising-stats stats1.qza \
-# --o-table table1 \
-# --o-representative-sequences rep1)
+###for paired-end ####set this len threshold based on the QC  
+ qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end.qza \
+ --p-trunc-len-f 257 \
+ --p-trunc-len-r 186 \
+ --p-n-threads 0 \
+ --o-denoising-stats stats1.qza \
+ --o-table table1 \
+ --o-representative-sequences rep1
 
 
 
@@ -90,7 +90,7 @@ qiime metadata tabulate \
 qiime feature-table summarize \
 --i-table table1.qza \
 --o-visualization table1.qzv \
---m-sample-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt  
+--m-sample-metadata-file GNV_Rhizosphere_Metadata.txt  
 
 
 qiime tools view table1.qzv
@@ -114,7 +114,7 @@ qiime vsearch cluster-features-de-novo \
 
 qiime feature-table summarize \
 --i-table 99_ASV_table.qza \
---m-sample-metadata-file  trimmed_seq/GNV_Root_Metadata.txt   \
+--m-sample-metadata-file  GNV_Rhizosphere_Metadata.txt   \
 --o-visualization 99_vsearch_visual.qzv
 
 qiime tools view 99_vsearch_visual.qzv
@@ -151,11 +151,12 @@ qiime tools import \
 
 qiime feature-classifier classify-consensus-blast \
 --i-query 99_ASV_seq.qza \
---i-reference-reads ../database_greengene/99_otus_ref.qza \
---i-reference-taxonomy ../database_greengene/99_ref-taxonomy.qza \
+--i-reference-reads /data/Amplicon_sequencing/database/99_otus_ref.qza \
+--i-reference-taxonomy /data/Amplicon_sequencing/database/99_ref-taxonomy.qza \
 --p-maxaccepts 10 \
 --p-perc-identity 0.97 \ ###adjust identity threshold based on your study
 --p-min-consensus 0.51 \
+--o-search-results  99_taxonomy_blast.table \
 --o-classification 99_taxonomy_blast.qza
 
 #visualization of the taxonomic assignment
@@ -169,16 +170,16 @@ qiime tools view 99_taxonomy_blast.qzv
 #Barplot
 
 qiime taxa barplot \
-  --i-table 99_OTU_table.qza \
+  --i-table 99_ASV_table.qza \
   --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization 99_barplot_blast.qzv
 
 qiime tools view 99_barplot_blast.qzv
 
 ##filter unidentified taxa
  qiime taxa filter-table \
-  --i-table 99_OTU_table.qza \
+  --i-table 99_ASV_table.qza \
   --i-taxonomy 99_taxonomy_blast.qza \
   --p-exclude Unassigned,Protista,Viridiplantae,k__unidentified \
   --p-mode contains \
@@ -187,7 +188,7 @@ qiime tools view 99_barplot_blast.qzv
 qiime taxa barplot \
   --i-table 99_table_no_Unassigned.qza \
   --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file trimmed_seq/GNV_Rhizosphere_Metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization 99_barplot_blast_filtered.qzv
 
 
@@ -237,6 +238,23 @@ biom convert \
 
 done
 
+
+
+
+###Obtaining the OTU table###
+To produce the OTU table do the following:
+
+qiime tools export \
+   --input-path table1.qza \
+   --output-path table
+   
+cd table
+
+biom convert --to-tsv \
+    -i feature-table.biom \
+    -o OTU-table.tsv
+
+
 ### OTU table for R run
  
 qiime tools export --input-path 99_ASV_table.qza --output-path otu_table
@@ -248,7 +266,7 @@ biom convert -i otu_table/feature-table.biom -o otu_table.tsv --to-tsv
 *Generate a tree for phylogenetic diversity analyses*
 
 qiime alignment mafft \
-  --i-sequences 99_OTU_seq.qza \
+  --i-sequences 99_ASV_seq.qza \
   --o-alignment aligned-rep-seqs.qza
   
 
@@ -268,12 +286,13 @@ qiime phylogeny midpoint-root \
   --input-path unrooted-tree.qza \
   --output-path exported-tree
 
-  
+
+###rarefy the sequences based on the minimum sequences depth of samples
 qiime diversity core-metrics-phylogenetic \
   --i-phylogeny rooted-tree.qza \
-  --i-table 99_OTU_table.qza \
-  --p-sampling-depth 28000 \###rarefy the sequences based on the minimum sequences depth of samples
-  --m-metadata-file sample-metadata.txt \
+  --i-table 99_ASV_table.qza \
+  --p-sampling-depth 30000 \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --output-dir core-metrics-results
 
 ##View beta diversity
@@ -291,8 +310,8 @@ qiime tools view core-metrics-results/bray_curtis_emperor.qzv
 
 qiime diversity beta-group-significance \
 --i-distance-matrix core-metrics-results/bray_curtis_distance_matrix.qza \
---m-metadata-file sample-metadata.txt \
---m-metadata-column Harvest \###adjust the factor according to the aim of your study
+--m-metadata-file GNV_Rhizosphere_Metadata.txt \
+--m-metadata-column Treatment \          ###adjust the factor according to the aim of your study
 --o-visualization core-metrics-results/bray_curtis-Harvest-significance.qzv \
 --p-pairwise
 
@@ -307,7 +326,7 @@ qiime diversity beta-group-significance \
 
 qiime diversity alpha-group-significance \
   --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization core-metrics-results/faith-pd-group-significance.qzv
   
 qiime tools view core-metrics-results/faith-pd-group-significance.qzv
@@ -318,7 +337,7 @@ qiime tools view core-metrics-results/faith-pd-group-significance.qzv
 
 qiime diversity alpha-group-significance \
   --i-alpha-diversity core-metrics-results/evenness_vector.qza \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization core-metrics-results/evenness-group-significance.qzv
   
 qiime tools view core-metrics-results/evenness-group-significance.qzv 
@@ -327,7 +346,7 @@ qiime tools view core-metrics-results/evenness-group-significance.qzv
 ###shannon index
  qiime diversity alpha-group-significance \
   --i-alpha-diversity core-metrics-results/shannon_vector.qza \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization core-metrics-results/shannon-group-significance.qzv
   
   qiime tools view core-metrics-results/shannon-group-significance.qzv
@@ -337,7 +356,7 @@ qiime diversity alpha-rarefaction \
   --i-table table1.qza \
   --i-phylogeny rooted-tree.qza \
   --p-max-depth 100000 \
-  --m-metadata-file sample-metadata.txt \
+  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
   --o-visualization alpha-rarefaction.qzv
   
   qiime tools view alpha-rarefaction.qzv
