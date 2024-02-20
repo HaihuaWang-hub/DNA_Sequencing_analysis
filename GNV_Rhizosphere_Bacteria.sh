@@ -154,7 +154,7 @@ qiime feature-classifier classify-consensus-blast \
 --i-reference-reads /data/Amplicon_sequencing/database/99_otus_ref.qza \
 --i-reference-taxonomy /data/Amplicon_sequencing/database/99_ref-taxonomy.qza \
 --p-maxaccepts 10 \
---p-perc-identity 0.97 \ ###adjust identity threshold based on your study
+--p-perc-identity 0.97 \ ###adjust identity threshold based on your study (fungi: 0.99; bacteria: 0.8)
 --p-min-consensus 0.51 \
 --o-search-results  99_taxonomy_blast.table \
 --o-classification 99_taxonomy_blast.qza
