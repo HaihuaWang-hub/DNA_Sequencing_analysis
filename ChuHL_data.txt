@@ -69,8 +69,8 @@ qiime dada2 denoise-single \
 ###for paired-end ####set this len threshold based on the QC  
  qiime dada2 denoise-paired \
   --i-demultiplexed-seqs demux-paired-end.qza \
- --p-trunc-len-f 257 \
- --p-trunc-len-r 186 \
+ --p-trunc-len-f 170 \
+ --p-trunc-len-r 150 \
  --p-n-threads 0 \
  --o-denoising-stats stats1.qza \
  --o-table table1 \
@@ -86,7 +86,7 @@ qiime metadata tabulate \
 qiime feature-table summarize \
 --i-table table1.qza \
 --o-visualization table1.qzv \
---m-sample-metadata-file GNV_Rhizosphere_Metadata.txt  
+--m-sample-metadata-file Metadata.txt  
 
 
 qiime tools view table1.qzv
@@ -110,7 +110,7 @@ qiime vsearch cluster-features-de-novo \
 
 qiime feature-table summarize \
 --i-table 99_ASV_table.qza \
---m-sample-metadata-file  GNV_Rhizosphere_Metadata.txt   \
+--m-sample-metadata-file  Metadata.txt   \
 --o-visualization 99_vsearch_visual.qzv
 
 qiime tools view 99_vsearch_visual.qzv
@@ -147,19 +147,19 @@ qiime tools import \
 
 qiime feature-classifier classify-consensus-blast \
 --i-query 99_ASV_seq.qza \
---i-reference-reads /data/Amplicon_sequencing/database/99_otus_ref.qza \
---i-reference-taxonomy /data/Amplicon_sequencing/database/99_ref-taxonomy.qza \
+--i-reference-reads /data/Amplicon_sequencing/database/99_unite_ref.qza \
+--i-reference-taxonomy /data/Amplicon_sequencing/database/99_unite-taxonomy.qza \
 --p-maxaccepts 10 \
---p-perc-identity 0.97 \ ###adjust identity threshold based on your study (fungi: 0.99; bacteria: 0.8)
+--p-perc-identity 0.90 \ ###adjust identity threshold based on your study (fungi: 0.99; bacteria: 0.8)
 --p-min-consensus 0.51 \
---o-search-results  99_taxonomy_blast.table \
---o-classification 99_taxonomy_blast.qza
+--o-search-results  90_taxonomy_blast.table \
+--o-classification 90_taxonomy_blast.qza
 
 #visualization of the taxonomic assignment
 
 qiime metadata tabulate \
-  --m-input-file 99_taxonomy_blast.qza \
-  --o-visualization 99_taxonomy_blast.qzv
+  --m-input-file 90_taxonomy_blast.qza \
+  --o-visualization 90_taxonomy_blast.qzv
 
 qiime tools view 99_taxonomy_blast.qzv
 
@@ -167,25 +167,25 @@ qiime tools view 99_taxonomy_blast.qzv
 
 qiime taxa barplot \
   --i-table 99_ASV_table.qza \
-  --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
-  --o-visualization 99_barplot_blast.qzv
+  --i-taxonomy 90_taxonomy_blast.qza \
+  --m-metadata-file Metadata.txt \
+  --o-visualization 90_barplot_blast.qzv
 
 qiime tools view 99_barplot_blast.qzv
 
 ##filter unidentified taxa
  qiime taxa filter-table \
   --i-table 99_ASV_table.qza \
-  --i-taxonomy 99_taxonomy_blast.qza \
+  --i-taxonomy 90_taxonomy_blast.qza \
   --p-exclude Unassigned,Protista,Viridiplantae,k__unidentified \
   --p-mode contains \
-  --o-filtered-table 99_table_no_Unassigned.qza
+  --o-filtered-table 90_table_no_Unassigned.qza
 
 qiime taxa barplot \
-  --i-table 99_table_no_Unassigned.qza \
-  --i-taxonomy 99_taxonomy_blast.qza \
-  --m-metadata-file GNV_Rhizosphere_Metadata.txt \
-  --o-visualization 99_barplot_blast_filtered.qzv
+  --i-table 90_table_no_Unassigned.qza \
+  --i-taxonomy 90_taxonomy_blast.qza \
+  --m-metadata-file Metadata.txt \
+  --o-visualization 90_barplot_blast_filtered.qzv
 
 
 ###Obtaining the OTU table###
